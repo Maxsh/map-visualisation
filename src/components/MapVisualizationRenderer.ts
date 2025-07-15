@@ -276,7 +276,7 @@ export class MapVisualizationRenderer {
           severity: location.intensity ? Math.ceil(location.intensity * 5) : 3,
           status: 'active',
           description: this.extractDescription(location, index),
-          timestamp: new Date()
+          timestamp: location.metadata?.date_time ? new Date(location.metadata?.date_time) : undefined,
         };
 
         const icon = AlertIconGenerator.createAlertIcon(
