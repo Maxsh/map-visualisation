@@ -12,6 +12,7 @@ class HeatmapApp {
   private markersRenderer?: MapVisualizationRenderer;
   private currentData: Location[] = [];
   private currentVisualizationType: VisualizationType = 'heatmap';
+  private readonly DATA_STORAGE_KEY = 'heatmap_app_data';
 
   constructor() {
     this.initializeApp();
@@ -20,7 +21,58 @@ class HeatmapApp {
   private initializeApp(): void {
     this.setupUI();
     this.initializeRenderers();
+    this.loadStoredData();
+  }
+
+  /**
+   * Save current data to localStorage
+   */
+  private saveDataToStorage(): void {
+    try {
+      const dataToStore = {
+        data: this.currentData,
+        timestamp: new Date().toISOString(),
+        version: '1.0'
+      };
+      localStorage.setItem(this.DATA_STORAGE_KEY, JSON.stringify(dataToStore));
+    } catch (error) {
+      console.warn('Failed to save data to localStorage:', error);
+    }
+  }
+
+  /**
+   * Load data from localStorage
+   */
+  private loadStoredData(): void {
+    try {
+      const storedData = localStorage.getItem(this.DATA_STORAGE_KEY);
+      if (storedData) {
+        const parsed = JSON.parse(storedData);
+        if (parsed.data && Array.isArray(parsed.data)) {
+          this.currentData = parsed.data;
+          this.updateDataStats();
+          this.renderVisualization();
+          console.log(`Loaded ${this.currentData.length} points from storage`);
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load data from localStorage:', error);
+    }
+    
+    // Fallback to sample data if no stored data or error
     this.loadSampleData();
+  }
+
+  /**
+   * Clear data from storage
+   */
+  private clearStoredData(): void {
+    try {
+      localStorage.removeItem(this.DATA_STORAGE_KEY);
+    } catch (error) {
+      console.warn('Failed to clear data from localStorage:', error);
+    }
   }
 
   private setupUI(): void {
@@ -135,6 +187,49 @@ class HeatmapApp {
     `;
 
     this.setupEventListeners();
+    this.setupCustomEventListeners();
+  }
+
+  /**
+   * Setup custom event listeners for inter-component communication
+   */
+  private setupCustomEventListeners(): void {
+    // Listen for export data event from file upload component
+    window.addEventListener('exportData', () => {
+      this.exportCurrentData();
+    });
+  }
+
+  /**
+   * Export current data as JSON file
+   */
+  private exportCurrentData(): void {
+    if (this.currentData.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    const dataToExport = {
+      metadata: {
+        exportDate: new Date().toISOString(),
+        totalPoints: this.currentData.length,
+        version: '1.0'
+      },
+      data: this.currentData
+    };
+
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+      type: 'application/json'
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `heatmap-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   private setupEventListeners(): void {
@@ -216,8 +311,17 @@ class HeatmapApp {
     style.textContent = FileUploadComponent.getCSS();
     document.head.appendChild(style);
 
-    new FileUploadComponent('upload-container', (data: Location[]) => {
-      this.currentData = data;
+    new FileUploadComponent('upload-container', (data: Location[], _result: any, shouldAppend: boolean = false) => {
+      if (shouldAppend) {
+        // Append new data to existing data
+        this.currentData = [...this.currentData, ...data];
+        console.log(`Appended ${data.length} points. Total: ${this.currentData.length} points`);
+      } else {
+        // Replace existing data
+        this.currentData = data;
+        console.log(`Loaded ${data.length} points`);
+      }
+      this.saveDataToStorage();
       this.updateDataStats();
       this.renderVisualization();
     });
@@ -265,12 +369,14 @@ class HeatmapApp {
 
   private loadSampleData(): void {
     this.currentData = getSampleDataByType(this.currentVisualizationType);
+    this.saveDataToStorage();
     this.updateDataStats();
     this.renderVisualization();
   }
 
   private clearData(): void {
     this.currentData = [];
+    this.clearStoredData();
     this.updateDataStats();
     this.renderVisualization();
   }

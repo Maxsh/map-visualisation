@@ -6,13 +6,13 @@ import type { Location } from '../types';
  */
 export class FileUploadComponent {
   private container: HTMLElement;
-  private onDataLoaded: (locations: Location[], result: FileLoadResult) => void;
+  private onDataLoaded: (locations: Location[], result: FileLoadResult, shouldAppend?: boolean) => void;
   private dropZone: HTMLElement | null = null;
   private fileInput: HTMLInputElement | null = null;
 
   constructor(
     containerId: string,
-    onDataLoaded: (locations: Location[], result: FileLoadResult) => void
+    onDataLoaded: (locations: Location[], result: FileLoadResult, shouldAppend?: boolean) => void
   ) {
     const container = document.getElementById(containerId);
     if (!container) {
@@ -54,6 +54,20 @@ export class FileUploadComponent {
           <input type="file" id="fileInput" accept=".json,.csv,.tsv,.txt,.geojson" multiple style="display: none;">
           
           <div class="file-options">
+            <div class="upload-mode-section">
+              <h4>Upload Mode</h4>
+              <div class="radio-group">
+                <label class="radio-option">
+                  <input type="radio" name="uploadMode" value="replace" checked>
+                  <span>Replace existing data</span>
+                </label>
+                <label class="radio-option">
+                  <input type="radio" name="uploadMode" value="append">
+                  <span>Append to existing data</span>
+                </label>
+              </div>
+            </div>
+            
             <div class="format-section">
               <label for="fileFormat">File Format:</label>
               <select id="fileFormat">
@@ -117,6 +131,14 @@ export class FileUploadComponent {
             </div>
           </div>
           
+          <div class="data-management-section">
+            <h4>Data Management</h4>
+            <div class="management-buttons">
+              <button id="clearDataBtn" class="clear-btn">Clear All Data</button>
+              <button id="exportDataBtn" class="export-btn">Export Current Data</button>
+            </div>
+          </div>
+          
           <div class="sample-section">
             <h4>Sample Data</h4>
             <div class="sample-buttons">
@@ -166,6 +188,13 @@ export class FileUploadComponent {
     // URL loading
     const loadUrlBtn = this.container.querySelector('#loadFromUrl');
     loadUrlBtn?.addEventListener('click', this.handleLoadFromUrl.bind(this));
+
+    // Data management
+    const clearDataBtn = this.container.querySelector('#clearDataBtn');
+    clearDataBtn?.addEventListener('click', this.handleClearData.bind(this));
+    
+    const exportDataBtn = this.container.querySelector('#exportDataBtn');
+    exportDataBtn?.addEventListener('click', this.handleExportData.bind(this));
 
     // Sample downloads
     this.container.querySelector('#downloadSampleJson')?.addEventListener('click', () => 
@@ -302,25 +331,63 @@ export class FileUploadComponent {
    * Handle load result
    */
   private handleLoadResult(result: FileLoadResult): void {
-    this.showResults(result);
-    this.onDataLoaded(result.locations, result);
+    const shouldAppend = this.shouldAppendData();
+    this.showResults(result, shouldAppend);
+    this.onDataLoaded(result.locations, result, shouldAppend);
+  }
+
+  /**
+   * Check if data should be appended based on UI selection
+   */
+  private shouldAppendData(): boolean {
+    const appendRadio = this.container.querySelector('input[name="uploadMode"][value="append"]') as HTMLInputElement;
+    return appendRadio?.checked || false;
+  }
+
+  /**
+   * Handle clear data action
+   */
+  private handleClearData(): void {
+    this.onDataLoaded([], { 
+      locations: [], 
+      errors: [], 
+      summary: { totalRows: 0, validLocations: 0, invalidRows: 0 } 
+    }, false);
+    
+    // Clear result section
+    const resultSection = this.container.querySelector('#resultSection') as HTMLElement;
+    resultSection.style.display = 'none';
+    
+    this.showMessage('All data has been cleared.', 'success');
+  }
+
+  /**
+   * Handle export data action
+   */
+  private handleExportData(): void {
+    // This will export the current data from the main app
+    // We'll trigger this via a custom event
+    const exportEvent = new CustomEvent('exportData');
+    window.dispatchEvent(exportEvent);
   }
 
   /**
    * Show load results
    */
-  private showResults(result: FileLoadResult): void {
+  private showResults(result: FileLoadResult, shouldAppend: boolean = false): void {
     const resultSection = this.container.querySelector('#resultSection') as HTMLElement;
     const summaryDiv = this.container.querySelector('#loadSummary') as HTMLElement;
     const errorsDiv = this.container.querySelector('#loadErrors') as HTMLElement;
     
     resultSection.style.display = 'block';
     
+    const modeText = shouldAppend ? 'appended' : 'loaded';
+    
     // Summary
     summaryDiv.innerHTML = `
       <div class="load-summary">
         <div class="summary-item success">
-          <strong>✓ ${result.summary.validLocations}</strong> valid locations loaded
+          <strong>✓ ${result.summary.validLocations}</strong> valid locations ${modeText}
         </div>
         <div class="summary-item info">
           <strong>${result.summary.totalRows}</strong> total rows processed
@@ -328,6 +395,11 @@ export class FileUploadComponent {
         ${result.summary.invalidRows > 0 ? `
           <div class="summary-item warning">
             <strong>⚠ ${result.summary.invalidRows}</strong> rows with errors
+          </div>
+        ` : ''}
+        ${shouldAppend ? `
+          <div class="summary-item info">
+            <strong>📎</strong> Data appended to existing dataset
           </div>
         ` : ''}
       </div>
@@ -347,6 +419,32 @@ export class FileUploadComponent {
     } else {
       errorsDiv.innerHTML = '';
     }
+  }
+
+  /**
+   * Show a message to the user
+   */
+  private showMessage(message: string, type: 'success' | 'error' | 'warning' = 'success'): void {
+    const resultSection = this.container.querySelector('#resultSection') as HTMLElement;
+    const summaryDiv = this.container.querySelector('#loadSummary') as HTMLElement;
+    const errorsDiv = this.container.querySelector('#loadErrors') as HTMLElement;
+    
+    resultSection.style.display = 'block';
+    errorsDiv.innerHTML = '';
+    
+    const iconMap = {
+      success: '✓',
+      error: '✗', 
+      warning: '⚠'
+    };
+    
+    summaryDiv.innerHTML = `
+      <div class="load-summary">
+        <div class="summary-item ${type}">
+          <strong>${iconMap[type]} ${message}</strong>
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -452,6 +550,45 @@ export class FileUploadComponent {
         margin-bottom: 20px;
       }
 
+      .upload-mode-section {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .upload-mode-section h4 {
+        margin: 0 0 10px 0;
+        color: #646cff;
+      }
+
+      .radio-group {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .radio-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        padding: 8px 12px;
+        border-radius: 6px;
+        transition: background-color 0.2s;
+      }
+
+      .radio-option:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .radio-option input[type="radio"] {
+        margin: 0;
+      }
+
+      .radio-option span {
+        font-size: 14px;
+      }
+
       .format-section {
         margin-bottom: 15px;
       }
@@ -551,6 +688,58 @@ export class FileUploadComponent {
       .sample-btn {
         padding: 8px 16px;
         font-size: 14px;
+      }
+
+      .data-management-section {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .data-management-section h4 {
+        margin-top: 0;
+        color: #646cff;
+      }
+
+      .management-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .clear-btn {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .clear-btn:hover {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        transform: translateY(-1px);
+      }
+
+      .export-btn {
+        background: linear-gradient(135deg, #059669, #047857);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+
+      .export-btn:hover {
+        background: linear-gradient(135deg, #047857, #065f46);
+        transform: translateY(-1px);
       }
 
       .result-section {
