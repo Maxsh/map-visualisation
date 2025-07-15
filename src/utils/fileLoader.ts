@@ -306,12 +306,22 @@ export class FileLoader {
           const [lng, lat] = feature.geometry.coordinates;
           const properties = feature.properties || {};
           
+          // Smart extraction of common properties
+          const name = properties.name || properties.title || properties.address || 
+                      properties.description || `Point ${index + 1}`;
+          const alertType = properties.alert_type || properties.alertType || 
+                           properties.type || properties.category;
+          
           const location: Location = {
-            id: properties.id || feature.id || index,
-            name: properties.name || properties.title,
+            id: properties.id || feature.id || `geojson-${index}`,
+            name: name,
             coordinates: { lat, lng },
-            intensity: properties.intensity || properties.weight || properties.value,
-            metadata: properties
+            intensity: properties.intensity || properties.weight || properties.value || 0.5,
+            metadata: {
+              ...properties,
+              // Add processed alertType to metadata for marker styling
+              ...(alertType && { processedAlertType: alertType })
+            }
           };
 
           if (this.validateCoordinate({ lat, lng })) {

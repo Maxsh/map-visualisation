@@ -21,15 +21,176 @@ body {
 }
 
 #app {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  text-align: center;
+  text-align: left;
 }
 
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
   margin-bottom: 30px;
+  text-align: center;
+  background: linear-gradient(135deg, #646cff, #535bf2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* App layout styles */
+.app-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2.5rem;
+}
+
+.app-header p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.1rem;
+}
+
+.app-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.87);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.data-stats {
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.app-main {
+  min-height: 600px;
+}
+
+.tab-header {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.tab-header h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.8rem;
+  color: #646cff;
+}
+
+.tab-header p {
+  margin: 0 0 1rem 0;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.controls {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.controls label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.controls input[type="range"] {
+  width: 120px;
+}
+
+.controls input[type="color"] {
+  width: 40px;
+  height: 30px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.controls select {
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.87);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.controls input[type="checkbox"] {
+  transform: scale(1.2);
+}
+
+.app-footer {
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Map container styling */
+#heatmap-container,
+#density-container,
+#markers-container,
+#points-container {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Tab styles */
@@ -49,27 +210,38 @@ h1 {
   cursor: pointer;
   border-bottom: 3px solid transparent;
   transition: all 0.3s ease;
+  border-radius: 6px 6px 0 0;
 }
 
 .tab-button:hover {
   color: rgba(255, 255, 255, 0.87);
   border-bottom-color: rgba(100, 108, 255, 0.5);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .tab-button.active {
   color: #646cff;
   border-bottom-color: #646cff;
+  background: rgba(100, 108, 255, 0.1);
 }
 
 .tab-content {
+  display: none;
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .tab-content.active {
+  display: block;
   opacity: 1;
   transform: translateY(0);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 #controls {
@@ -151,6 +323,63 @@ button:focus-visible {
     background-color: #ffffff;
   }
   
+  .app-header {
+    border-bottom-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  .app-nav {
+    background: rgba(0, 0, 0, 0.05);
+  }
+  
+  .tab-header {
+    background: rgba(0, 0, 0, 0.05);
+  }
+  
+  .tab-header h2 {
+    color: #495057;
+  }
+  
+  .tab-header p {
+    color: #6c757d;
+  }
+  
+  .controls label {
+    color: #495057;
+  }
+  
+  .controls select {
+    background: #fff;
+    color: #333;
+    border-color: #ced4da;
+  }
+  
+  .data-stats {
+    background: rgba(0, 0, 0, 0.1);
+    color: #495057;
+  }
+  
+  .btn-secondary {
+    background: rgba(0, 0, 0, 0.1);
+    color: #495057;
+  }
+  
+  .btn-secondary:hover {
+    background: rgba(0, 0, 0, 0.2);
+  }
+  
+  .app-footer {
+    border-top-color: rgba(0, 0, 0, 0.1);
+    color: #6c757d;
+  }
+  
+  #heatmap-container,
+  #density-container,
+  #markers-container,
+  #points-container {
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
   button {
     background-color: #f9f9f9;
     color: #213547;
@@ -188,11 +417,13 @@ button:focus-visible {
   .tab-button:hover {
     color: #213547;
     border-bottom-color: rgba(116, 123, 255, 0.5);
+    background: rgba(0, 0, 0, 0.05);
   }
   
   .tab-button.active {
     color: #747bff;
     border-bottom-color: #747bff;
+    background: rgba(116, 123, 255, 0.1);
   }
   
   .tabs {
