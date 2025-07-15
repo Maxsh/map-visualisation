@@ -305,7 +305,7 @@ export class MapVisualizationRenderer {
         // Convert location to alert marker format
         const alertMarker: AlertMarker = {
           ...location,
-          alertType: this.determineAlertType(location, markerConfig),
+          alertType: this.determineAlertType(location),
           severity: location.intensity ? Math.ceil(location.intensity * 5) : 3,
           status: 'active',
           description: this.extractDescription(location, index),
@@ -349,13 +349,8 @@ export class MapVisualizationRenderer {
   /**
    * Determine the appropriate alert type for a location
    */
-  private determineAlertType(location: Location, markerConfig: MarkerConfig): AlertMarker['alertType'] {
-    // First check if user has selected a specific marker style
-    if (markerConfig.iconType) {
-      return markerConfig.iconType as AlertMarker['alertType'];
-    }
-    
-    // Then check if GeoJSON properties contain alert type information
+  private determineAlertType(location: Location): AlertMarker['alertType'] {
+    // Check if GeoJSON properties contain alert type information
     if (location.metadata?.processedAlertType) {
       const geoAlertType = String(location.metadata.processedAlertType).toLowerCase();
       // Map common GeoJSON alert types to our internal types
@@ -363,7 +358,35 @@ export class MapVisualizationRenderer {
       if (geoAlertType.includes('warning') || geoAlertType.includes('⚠️') || geoAlertType.includes('🟡')) return 'warning';
       if (geoAlertType.includes('success') || geoAlertType.includes('✅') || geoAlertType.includes('🟢')) return 'success';
       if (geoAlertType.includes('danger') || geoAlertType.includes('❌')) return 'danger';
+      if (geoAlertType.includes('resolved') || geoAlertType.includes('✔️')) return 'resolved';
       if (geoAlertType.includes('info') || geoAlertType.includes('🔵')) return 'info';
+    }
+    
+    // Check if it's already an AlertMarker with alertType
+    if ((location as any).alertType) {
+      return (location as any).alertType;
+    }
+
+    // Check metadata for direct alert type fields
+    if (location.metadata?.alertType) {
+      const alertType = String(location.metadata.alertType).toLowerCase();
+      if (['critical', 'warning', 'info', 'danger', 'success', 'resolved'].includes(alertType)) {
+        return alertType as AlertMarker['alertType'];
+      }
+    }
+    
+    if (location.metadata?.alert_type) {
+      const alertType = String(location.metadata.alert_type).toLowerCase();
+      if (['critical', 'warning', 'info', 'danger', 'success', 'resolved'].includes(alertType)) {
+        return alertType as AlertMarker['alertType'];
+      }
+    }
+    
+    if (location.metadata?.type) {
+      const alertType = String(location.metadata.type).toLowerCase();
+      if (['critical', 'warning', 'info', 'danger', 'success', 'resolved'].includes(alertType)) {
+        return alertType as AlertMarker['alertType'];
+      }
     }
     
     // Default to info

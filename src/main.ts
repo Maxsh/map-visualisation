@@ -87,7 +87,7 @@ class HeatmapApp {
 
           <div id="markers-tab" class="tab-content">
             <div class="tab-header">
-              <h2>� Location Markers</h2>
+              <h2>🚨 Location Markers</h2>
               <p>Custom markers for all uploaded location data with alert-style icons</p>
               <div class="controls">
                 <label>
@@ -103,12 +103,15 @@ class HeatmapApp {
                   </select>
                 </label>
                 <label>
-                  Marker Style: 
-                  <select id="marker-style">
-                    <option value="info" selected>Info (Blue)</option>
-                    <option value="warning">Warning (Orange)</option>
-                    <option value="success">Success (Green)</option>
-                    <option value="critical">Critical (Red)</option>
+                  Filter by Alert Type: 
+                  <select id="alert-type-filter">
+                    <option value="all" selected>All Types</option>
+                    <option value="critical">Critical</option>
+                    <option value="warning">Warning</option>
+                    <option value="info">Info</option>
+                    <option value="danger">Danger</option>
+                    <option value="success">Success</option>
+                    <option value="resolved">Resolved</option>
                   </select>
                 </label>
               </div>
@@ -185,7 +188,7 @@ class HeatmapApp {
     // Marker controls
     const pulseAnimation = document.getElementById('pulse-animation') as HTMLInputElement;
     const iconSize = document.getElementById('icon-size') as HTMLSelectElement;
-    const markerStyle = document.getElementById('marker-style') as HTMLSelectElement;
+    const alertTypeFilter = document.getElementById('alert-type-filter') as HTMLSelectElement;
     
     pulseAnimation?.addEventListener('change', () => {
       if (this.currentVisualizationType === 'markers') {
@@ -197,7 +200,7 @@ class HeatmapApp {
         this.renderVisualization();
       }
     });
-    markerStyle?.addEventListener('change', () => {
+    alertTypeFilter?.addEventListener('change', () => {
       if (this.currentVisualizationType === 'markers') {
         this.renderVisualization();
       }
@@ -399,11 +402,13 @@ class HeatmapApp {
 
     const pulseAnimation = (document.getElementById('pulse-animation') as HTMLInputElement)?.checked || false;
     const iconSize = parseInt((document.getElementById('icon-size') as HTMLSelectElement)?.value || '32');
-    const markerStyle = (document.getElementById('marker-style') as HTMLSelectElement)?.value || 'info';
+    const alertTypeFilter = (document.getElementById('alert-type-filter') as HTMLSelectElement)?.value || 'all';
+
+    // Filter data by alert type
+    const filteredData = this.filterDataByAlertType(this.currentData, alertTypeFilter);
 
     this.markersRenderer.setVisualizationType('markers', {
       markers: {
-        iconType: markerStyle as any,
         iconSize: [iconSize, iconSize],
         pulseAnimation,
         showPopups: true,
@@ -411,7 +416,52 @@ class HeatmapApp {
       }
     });
 
-    this.markersRenderer.render(this.currentData);
+    this.markersRenderer.render(filteredData);
+  }
+
+  /**
+   * Filter data by alert type
+   */
+  private filterDataByAlertType(data: Location[], filterValue: string): Location[] {
+    if (filterValue === 'all') {
+      return data;
+    }
+
+    return data.filter(location => {
+      // Check if location has alert type information in metadata
+      const alertType = this.extractAlertTypeFromLocation(location);
+      return alertType === filterValue;
+    });
+  }
+
+  /**
+   * Extract alert type from location data
+   */
+  private extractAlertTypeFromLocation(location: Location): string {
+    // Check various possible sources for alert type
+    if (location.metadata?.processedAlertType) {
+      const geoAlertType = String(location.metadata.processedAlertType).toLowerCase();
+      // Map common GeoJSON alert types to our internal types
+      if (geoAlertType.includes('critical') || geoAlertType.includes('🔴')) return 'critical';
+      if (geoAlertType.includes('warning') || geoAlertType.includes('⚠️') || geoAlertType.includes('🟡')) return 'warning';
+      if (geoAlertType.includes('success') || geoAlertType.includes('✅') || geoAlertType.includes('🟢')) return 'success';
+      if (geoAlertType.includes('danger') || geoAlertType.includes('❌')) return 'danger';
+      if (geoAlertType.includes('resolved') || geoAlertType.includes('✔️')) return 'resolved';
+      if (geoAlertType.includes('info') || geoAlertType.includes('🔵')) return 'info';
+    }
+
+    // Check if it's already an AlertMarker with alertType
+    if ((location as any).alertType) {
+      return (location as any).alertType;
+    }
+
+    // Check metadata for direct alert type fields
+    if (location.metadata?.alertType) return String(location.metadata.alertType);
+    if (location.metadata?.alert_type) return String(location.metadata.alert_type);
+    if (location.metadata?.type) return String(location.metadata.type);
+
+    // Default to info if no specific type found
+    return 'info';
   }
 
   private updateDataStats(): void {
