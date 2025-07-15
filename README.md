@@ -11,6 +11,9 @@ A TypeScript project for rendering interactive heatmaps based on location coordi
 - 📱 **Responsive**: Works on desktop and mobile devices
 - 🌙 **Dark/Light Theme**: Automatic theme detection and styling
 - ⚡ **Fast**: Built with Vite for optimal performance
+- 📁 **File Loading**: Support for JSON, CSV, TSV, and GeoJSON data files
+- 🌐 **URL Loading**: Load data directly from web URLs
+- 🔄 **Drag & Drop**: Easy file upload with drag and drop interface
 
 ## Quick Start
 
@@ -74,6 +77,84 @@ const config: HeatmapVisualization = {
 }
 
 await renderer.initialize(config)
+```
+
+### Loading Data from Files
+
+The application supports loading location data from various file formats:
+
+#### Supported Formats
+
+- **JSON**: Array of location objects or nested structure
+- **CSV**: Comma-separated values with customizable column mapping  
+- **TSV**: Tab-separated values
+- **GeoJSON**: Standard geographic data format
+
+#### File Loading Example
+
+```typescript
+import { FileLoader } from './utils/fileLoader'
+
+// Load from file
+const file = document.getElementById('fileInput').files[0]
+const result = await FileLoader.loadFromFile(file, {
+  format: 'csv',
+  hasHeader: true,
+  columnMapping: {
+    lat: 'latitude',
+    lng: 'longitude', 
+    intensity: 'weight',
+    name: 'city_name'
+  }
+})
+
+// Load from URL
+const urlResult = await FileLoader.loadFromUrl('https://example.com/data.json')
+
+// Use the loaded data
+renderer.updateData(result.locations)
+```
+
+#### File Format Examples
+
+**JSON Format:**
+```json
+[
+  {
+    "id": 1,
+    "name": "New York",
+    "lat": 40.7128,
+    "lng": -74.0060,
+    "intensity": 0.9
+  }
+]
+```
+
+**CSV Format:**
+```csv
+name,lat,lng,intensity
+New York,40.7128,-74.0060,0.9
+Los Angeles,34.0522,-118.2437,0.7
+```
+
+**GeoJSON Format:**
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-74.0060, 40.7128]
+      },
+      "properties": {
+        "name": "New York",
+        "intensity": 0.9
+      }
+    }
+  ]
+}
 ```
 
 ### Data Formats
@@ -149,6 +230,36 @@ interface HeatmapConfig {
 - `normalizeIntensities(locations: Location[]): Location[]`
   - Normalize intensity values to 0-1 range
 
+### FileLoader
+
+#### Methods
+
+- `loadFromFile(file: File, options?: FileLoadOptions): Promise<FileLoadResult>`
+  - Load location data from uploaded file
+
+- `loadFromUrl(url: string, options?: FileLoadOptions): Promise<FileLoadResult>`
+  - Load location data from web URL
+
+- `generateSampleFiles(): Record<string, string>`
+  - Generate sample data files for testing
+
+#### File Load Options
+
+```typescript
+interface FileLoadOptions {
+  format?: 'json' | 'csv' | 'tsv' | 'geojson';
+  columnMapping?: {
+    lat: string;
+    lng: string;
+    intensity?: string;
+    name?: string;
+    id?: string;
+  };
+  delimiter?: string;
+  hasHeader?: boolean;
+}
+```
+
 ## Built With
 
 - **[TypeScript](https://www.typescriptlang.org/)** - Type-safe JavaScript
@@ -177,13 +288,18 @@ interface HeatmapConfig {
 ```
 src/
 ├── components/         # Reusable components
-│   └── HeatmapRenderer.ts
+│   ├── HeatmapRenderer.ts
+│   └── FileUploadComponent.ts
 ├── data/              # Sample data and generators
 │   └── sampleData.ts
+├── examples/          # Usage examples and demos
+│   └── usage-examples.ts
 ├── types/             # TypeScript interfaces
 │   └── index.ts
 ├── utils/             # Utility functions
-│   └── geoUtils.ts
+│   ├── geoUtils.ts
+│   ├── dataProcessor.ts
+│   └── fileLoader.ts
 ├── main.ts            # Application entry point
 └── style.css          # Global styles
 ```

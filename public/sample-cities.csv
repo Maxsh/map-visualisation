@@ -1,0 +1,21 @@
+name,lat,lng,intensity,category
+New York,40.7128,-74.0060,0.95,major_city
+Los Angeles,34.0522,-118.2437,0.85,major_city
+Chicago,41.8781,-87.6298,0.75,major_city
+Houston,29.7604,-95.3698,0.65,major_city
+Phoenix,33.4484,-112.0740,0.55,major_city
+Philadelphia,39.9526,-75.1652,0.70,major_city
+San Antonio,29.4241,-98.4936,0.60,major_city
+San Diego,32.7157,-117.1611,0.68,major_city
+Dallas,32.7767,-96.7970,0.72,major_city
+San Jose,37.3382,-121.8863,0.58,major_city
+Austin,30.2672,-97.7431,0.62,growing_city
+Jacksonville,30.3322,-81.6557,0.45,growing_city
+Fort Worth,32.7555,-97.3308,0.50,growing_city
+Columbus,39.9612,-82.9988,0.48,growing_city
+Charlotte,35.2271,-80.8431,0.52,growing_city
+San Francisco,37.7749,-122.4194,0.90,tech_hub
+Seattle,47.6062,-122.3321,0.78,tech_hub
+Boston,42.3601,-71.0589,0.82,tech_hub
+Denver,39.7392,-104.9903,0.56,growing_city
+Washington DC,38.9072,-77.0369,0.88,political_center
