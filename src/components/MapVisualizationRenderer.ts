@@ -72,6 +72,20 @@ export class MapVisualizationRenderer {
 
     // Add CSS for alert markers
     this.injectAlertMarkerCSS();
+    
+    // Add event listeners for map updates
+    this.setupMapEventListeners();
+  }
+
+  /**
+   * Setup event listeners for map updates
+   */
+  private setupMapEventListeners(): void {
+    this.map.on('moveend zoomend', () => {
+      if (this.currentVisualizationType === 'heatmap' && this.currentData.length > 0) {
+        this.drawHeatmapCanvas(this.currentData);
+      }
+    });
   }
 
   /**
@@ -161,11 +175,15 @@ export class MapVisualizationRenderer {
     if (!ctx) return;
 
     const heatmapConfig = this.currentConfig.heatmap || {};
-    const radius = heatmapConfig.radius || 20;
-    const maxOpacity = heatmapConfig.maxOpacity || 0.8;
+    const radius = heatmapConfig.radius || 30; // Increased default radius
+    const maxOpacity = heatmapConfig.maxOpacity || 0.9; // Increased default opacity
+    const blur = heatmapConfig.blur || 0.85;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Apply blur effect for smoother heatmap
+    ctx.filter = `blur(${Math.max(blur * 10, 1)}px)`;
 
     // Draw heat points
     data.forEach(location => {
@@ -175,19 +193,34 @@ export class MapVisualizationRenderer {
           location.coordinates.lng
         ]);
 
-        const intensity = (location.intensity || 1) / 10; // Normalize intensity
+        // Improved intensity calculation - use full intensity range
+        const intensity = location.intensity || 0.5; // Default to 0.5 if no intensity
         const alpha = Math.min(intensity * maxOpacity, maxOpacity);
 
-        // Create radial gradient
+        // Create radial gradient with better color scaling
         const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius);
-        gradient.addColorStop(0, `rgba(255, 0, 0, ${alpha})`);
-        gradient.addColorStop(0.5, `rgba(255, 255, 0, ${alpha * 0.5})`);
-        gradient.addColorStop(1, 'rgba(255, 255, 0, 0)');
+        
+        // Enhanced color gradient for better visibility
+        const baseAlpha = Math.max(alpha, 0.1); // Minimum visibility
+        gradient.addColorStop(0, `rgba(255, 0, 0, ${baseAlpha})`);
+        gradient.addColorStop(0.3, `rgba(255, 100, 0, ${baseAlpha * 0.8})`);
+        gradient.addColorStop(0.6, `rgba(255, 255, 0, ${baseAlpha * 0.6})`);
+        gradient.addColorStop(0.8, `rgba(100, 255, 100, ${baseAlpha * 0.4})`);
+        gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
 
         ctx.fillStyle = gradient;
-        ctx.fillRect(point.x - radius, point.y - radius, radius * 2, radius * 2);
+        
+        // Use globalCompositeOperation for better blending
+        ctx.globalCompositeOperation = 'screen';
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
       }
     });
+    
+    // Reset filter
+    ctx.filter = 'none';
   }
 
   /**

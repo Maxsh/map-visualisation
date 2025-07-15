@@ -54,6 +54,18 @@ class HeatmapApp {
             <div class="tab-header">
               <h2>🔥 Heatmap Visualization</h2>
               <p>Classic heatmap rendering showing intensity distribution</p>
+              <div class="controls">
+                <label>
+                  Radius: 
+                  <input type="range" id="heatmap-radius" min="10" max="60" value="35" />
+                  <span id="heatmap-radius-value">35</span>px
+                </label>
+                <label>
+                  Opacity: 
+                  <input type="range" id="heatmap-opacity" min="0.1" max="1" step="0.1" value="0.9" />
+                  <span id="heatmap-opacity-value">0.9</span>
+                </label>
+              </div>
             </div>
             <div id="heatmap-container" style="height: 500px; width: 100%;"></div>
           </div>
@@ -139,6 +151,25 @@ class HeatmapApp {
 
     document.getElementById('clear-data-btn')?.addEventListener('click', () => {
       this.clearData();
+    });
+
+    // Heatmap controls
+    const heatmapRadiusSlider = document.getElementById('heatmap-radius') as HTMLInputElement;
+    const heatmapRadiusValue = document.getElementById('heatmap-radius-value');
+    heatmapRadiusSlider?.addEventListener('input', () => {
+      if (heatmapRadiusValue) heatmapRadiusValue.textContent = heatmapRadiusSlider.value;
+      if (this.currentVisualizationType === 'heatmap') {
+        this.renderVisualization();
+      }
+    });
+
+    const heatmapOpacitySlider = document.getElementById('heatmap-opacity') as HTMLInputElement;
+    const heatmapOpacityValue = document.getElementById('heatmap-opacity-value');
+    heatmapOpacitySlider?.addEventListener('input', () => {
+      if (heatmapOpacityValue) heatmapOpacityValue.textContent = heatmapOpacitySlider.value;
+      if (this.currentVisualizationType === 'heatmap') {
+        this.renderVisualization();
+      }
     });
 
     // Density controls
@@ -270,6 +301,10 @@ class HeatmapApp {
     }
 
     if (this.heatmapRenderer) {
+      // Get dynamic values from controls
+      const radius = parseInt((document.getElementById('heatmap-radius') as HTMLInputElement)?.value || '35');
+      const maxOpacity = parseFloat((document.getElementById('heatmap-opacity') as HTMLInputElement)?.value || '0.9');
+
       // Use the existing HeatmapRenderer API
       const visualization = {
         locations: this.currentData,
@@ -280,16 +315,17 @@ class HeatmapApp {
           minZoom: 2
         },
         heatmapConfig: {
-          radius: 20,
-          maxOpacity: 0.8,
-          minOpacity: 0.2,
+          radius: radius,
+          maxOpacity: maxOpacity,
+          minOpacity: 0.1,
           blur: 0.85,
           gradient: {
-            0.0: '#3498db',
-            0.3: '#2ecc71', 
-            0.6: '#f1c40f',
-            0.8: '#e67e22',
-            1.0: '#e74c3c'
+            0.0: '#0080ff',
+            0.2: '#00ff80', 
+            0.4: '#80ff00',
+            0.6: '#ffff00',
+            0.8: '#ff8000',
+            1.0: '#ff0000'
           }
         }
       };
