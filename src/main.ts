@@ -117,6 +117,35 @@ class HeatmapApp {
                   <input type="range" id="heatmap-opacity" min="0.1" max="1" step="0.1" value="0.9" />
                   <span id="heatmap-opacity-value">0.9</span>
                 </label>
+                <label>
+                  Filter by Alert Type: 
+                  <select id="heatmap-alert-type-filter">
+                    <option value="all" selected>All Types</option>
+                    <option value="critical">Critical</option>
+                    <option value="warning">Warning</option>
+                    <option value="info">Info</option>
+                    <option value="danger">Danger</option>
+                    <option value="success">Success</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                </label>
+                <label>
+                  Filter by Time: 
+                  <select id="heatmap-time-filter">
+                    <option value="0" selected>All Time</option>
+                    <option value="1">Last 1 hour</option>
+                    <option value="2">Last 2 hours</option>
+                    <option value="3">Last 3 hours</option>
+                    <option value="4">Last 4 hours</option>
+                    <option value="5">Last 5 hours</option>
+                    <option value="6">Last 6 hours</option>
+                    <option value="7">Last 7 hours</option>
+                    <option value="8">Last 8 hours</option>
+                  </select>
+                </label>
+                <div class="filter-status" id="heatmap-filter-status">
+                  <span id="heatmap-filter-count">Showing all data points</span>
+                </div>
               </div>
             </div>
             <div id="heatmap-container" style="height: 750px; width: 100%;"></div>
@@ -132,6 +161,35 @@ class HeatmapApp {
                   <input type="range" id="grid-size" min="10" max="50" value="20" />
                   <span id="grid-size-value">20</span>
                 </label>
+                <label>
+                  Filter by Alert Type: 
+                  <select id="density-alert-type-filter">
+                    <option value="all" selected>All Types</option>
+                    <option value="critical">Critical</option>
+                    <option value="warning">Warning</option>
+                    <option value="info">Info</option>
+                    <option value="danger">Danger</option>
+                    <option value="success">Success</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                </label>
+                <label>
+                  Filter by Time: 
+                  <select id="density-time-filter">
+                    <option value="0" selected>All Time</option>
+                    <option value="1">Last 1 hour</option>
+                    <option value="2">Last 2 hours</option>
+                    <option value="3">Last 3 hours</option>
+                    <option value="4">Last 4 hours</option>
+                    <option value="5">Last 5 hours</option>
+                    <option value="6">Last 6 hours</option>
+                    <option value="7">Last 7 hours</option>
+                    <option value="8">Last 8 hours</option>
+                  </select>
+                </label>
+                <div class="filter-status" id="density-filter-status">
+                  <span id="density-filter-count">Showing all data points</span>
+                </div>
               </div>
             </div>
             <div id="density-container" style="height: 750px; width: 100%;"></div>
@@ -287,11 +345,43 @@ class HeatmapApp {
       }
     });
 
+    // Heatmap filter controls
+    const heatmapAlertTypeFilter = document.getElementById('heatmap-alert-type-filter') as HTMLSelectElement;
+    const heatmapTimeFilter = document.getElementById('heatmap-time-filter') as HTMLSelectElement;
+    
+    heatmapAlertTypeFilter?.addEventListener('change', () => {
+      if (this.currentVisualizationType === 'heatmap') {
+        this.renderVisualization();
+      }
+    });
+    
+    heatmapTimeFilter?.addEventListener('change', () => {
+      if (this.currentVisualizationType === 'heatmap') {
+        this.renderVisualization();
+      }
+    });
+
     // Density controls
     const gridSizeSlider = document.getElementById('grid-size') as HTMLInputElement;
     const gridSizeValue = document.getElementById('grid-size-value');
     gridSizeSlider?.addEventListener('input', () => {
       if (gridSizeValue) gridSizeValue.textContent = gridSizeSlider.value;
+      if (this.currentVisualizationType === 'density') {
+        this.renderVisualization();
+      }
+    });
+
+    // Density filter controls
+    const densityAlertTypeFilter = document.getElementById('density-alert-type-filter') as HTMLSelectElement;
+    const densityTimeFilter = document.getElementById('density-time-filter') as HTMLSelectElement;
+    
+    densityAlertTypeFilter?.addEventListener('change', () => {
+      if (this.currentVisualizationType === 'density') {
+        this.renderVisualization();
+      }
+    });
+    
+    densityTimeFilter?.addEventListener('change', () => {
       if (this.currentVisualizationType === 'density') {
         this.renderVisualization();
       }
@@ -436,10 +526,20 @@ class HeatmapApp {
       // Get dynamic values from controls
       const radius = parseInt((document.getElementById('heatmap-radius') as HTMLInputElement)?.value || '35');
       const maxOpacity = parseFloat((document.getElementById('heatmap-opacity') as HTMLInputElement)?.value || '0.9');
+      
+      // Get filter values
+      const alertTypeFilter = (document.getElementById('heatmap-alert-type-filter') as HTMLSelectElement)?.value || 'all';
+      const timeFilterHours = parseInt((document.getElementById('heatmap-time-filter') as HTMLSelectElement)?.value || '0');
+
+      // Filter data by alert type and time
+      const filteredData = this.filterDataByAlertTypeAndTime(this.currentData, alertTypeFilter, timeFilterHours);
+
+      // Update filter status for heatmap
+      this.updateHeatmapFilterStatus(filteredData.length, alertTypeFilter, timeFilterHours);
 
       // Use the existing HeatmapRenderer API
       const visualization = {
-        locations: this.currentData,
+        locations: filteredData,
         mapConfig: {
           center: { lat: 40.7128, lng: -74.0060 },
           zoom: 11,
@@ -462,7 +562,7 @@ class HeatmapApp {
         }
       };
       
-      if (this.currentData.length === 0) {
+      if (filteredData.length === 0) {
         this.heatmapRenderer.updateData([], visualization.heatmapConfig);
       } else {
         this.heatmapRenderer.initialize(visualization).catch(console.error);
@@ -500,6 +600,16 @@ class HeatmapApp {
 
     const gridSize = parseInt((document.getElementById('grid-size') as HTMLInputElement)?.value || '20');
     
+    // Get filter values
+    const alertTypeFilter = (document.getElementById('density-alert-type-filter') as HTMLSelectElement)?.value || 'all';
+    const timeFilterHours = parseInt((document.getElementById('density-time-filter') as HTMLSelectElement)?.value || '0');
+
+    // Filter data by alert type and time
+    const filteredData = this.filterDataByAlertTypeAndTime(this.currentData, alertTypeFilter, timeFilterHours);
+
+    // Update filter status for density
+    this.updateDensityFilterStatus(filteredData.length, alertTypeFilter, timeFilterHours);
+    
     this.densityRenderer.setVisualizationType('density', {
       density: {
         gridSize,
@@ -509,7 +619,7 @@ class HeatmapApp {
       }
     });
     
-    this.densityRenderer.render(this.currentData);
+    this.densityRenderer.render(filteredData);
   }
 
   private renderMarkers(): void {
@@ -628,6 +738,54 @@ class HeatmapApp {
     const statusElement = document.getElementById('filter-count');
     if (statusElement) {
       let statusText = `Showing ${filteredCount} markers`;
+      
+      const filters = [];
+      if (alertTypeFilter !== 'all') {
+        filters.push(`type: ${alertTypeFilter}`);
+      }
+      if (timeFilterHours > 0) {
+        filters.push(`time: last ${timeFilterHours} hour${timeFilterHours > 1 ? 's' : ''}`);
+      }
+      
+      if (filters.length > 0) {
+        statusText += ` (filtered by ${filters.join(', ')})`;
+      }
+      
+      statusElement.textContent = statusText;
+    }
+  }
+
+  /**
+   * Update heatmap filter status display
+   */
+  private updateHeatmapFilterStatus(filteredCount: number, alertTypeFilter: string, timeFilterHours: number): void {
+    const statusElement = document.getElementById('heatmap-filter-count');
+    if (statusElement) {
+      let statusText = `Showing ${filteredCount} data points`;
+      
+      const filters = [];
+      if (alertTypeFilter !== 'all') {
+        filters.push(`type: ${alertTypeFilter}`);
+      }
+      if (timeFilterHours > 0) {
+        filters.push(`time: last ${timeFilterHours} hour${timeFilterHours > 1 ? 's' : ''}`);
+      }
+      
+      if (filters.length > 0) {
+        statusText += ` (filtered by ${filters.join(', ')})`;
+      }
+      
+      statusElement.textContent = statusText;
+    }
+  }
+
+  /**
+   * Update density filter status display
+   */
+  private updateDensityFilterStatus(filteredCount: number, alertTypeFilter: string, timeFilterHours: number): void {
+    const statusElement = document.getElementById('density-filter-count');
+    if (statusElement) {
+      let statusText = `Showing ${filteredCount} data points`;
       
       const filters = [];
       if (alertTypeFilter !== 'all') {
