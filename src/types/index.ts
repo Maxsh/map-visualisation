@@ -94,6 +94,7 @@ export interface DensityConfig {
   strokeWidth?: number;
   strokeColor?: string;
   showLabels?: boolean;
+  showPopulation?: boolean;
   aggregationMethod?: 'count' | 'sum' | 'average';
   showGrid?: boolean;
 }

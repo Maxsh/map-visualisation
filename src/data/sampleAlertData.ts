@@ -1,148 +1,220 @@
 import type { Location, AlertMarker } from '../types';
 
 /**
- * Sample heatmap locations
+ * Sample heatmap locations in Kyiv
  */
 export const sampleLocations: Location[] = [
   {
     id: 1,
-    name: "Central Park",
-    coordinates: { lat: 40.7829, lng: -73.9654 },
-    intensity: 0.8
-  },
-  {
-    id: 2,
-    name: "Times Square",
-    coordinates: { lat: 40.7580, lng: -73.9855 },
+    name: "Maidan Nezalezhnosti",
+    coordinates: { lat: 50.4501, lng: 30.5234 },
     intensity: 0.9
   },
   {
+    id: 2,
+    name: "Kyiv Pechersk Lavra",
+    coordinates: { lat: 50.4342, lng: 30.5580 },
+    intensity: 0.8
+  },
+  {
     id: 3,
-    name: "Brooklyn Bridge",
-    coordinates: { lat: 40.7061, lng: -73.9969 },
+    name: "Golden Gate",
+    coordinates: { lat: 50.4487, lng: 30.5138 },
     intensity: 0.7
   },
   {
     id: 4,
-    name: "Empire State Building",
-    coordinates: { lat: 40.7484, lng: -73.9857 },
+    name: "St. Sophia Cathedral",
+    coordinates: { lat: 50.4525, lng: 30.5155 },
     intensity: 0.85
   },
   {
     id: 5,
-    name: "Staten Island Ferry",
-    coordinates: { lat: 40.6892, lng: -74.0445 },
+    name: "Motherland Monument",
+    coordinates: { lat: 50.4265, lng: 30.5631 },
     intensity: 0.6
   },
   {
     id: 6,
-    name: "High Line",
-    coordinates: { lat: 40.7480, lng: -74.0048 },
+    name: "Khreshchatyk Street",
+    coordinates: { lat: 50.4474, lng: 30.5254 },
     intensity: 0.75
   },
   {
     id: 7,
-    name: "One World Trade Center",
-    coordinates: { lat: 40.7127, lng: -74.0134 },
+    name: "Arsenalna Metro Station",
+    coordinates: { lat: 50.4440, lng: 30.5459 },
     intensity: 0.8
   },
   {
     id: 8,
-    name: "Yankee Stadium",
-    coordinates: { lat: 40.8296, lng: -73.9262 },
+    name: "Podil District",
+    coordinates: { lat: 50.4740, lng: 30.5100 },
     intensity: 0.65
+  },
+  {
+    id: 9,
+    name: "Olympiyskiy Stadium",
+    coordinates: { lat: 50.4336, lng: 30.5211 },
+    intensity: 0.7
+  },
+  {
+    id: 10,
+    name: "Mariinsky Palace",
+    coordinates: { lat: 50.4485, lng: 30.5330 },
+    intensity: 0.8
+  },
+  {
+    id: 11,
+    name: "Kyiv Zoo",
+    coordinates: { lat: 50.4584, lng: 30.5129 },
+    intensity: 0.55
+  },
+  {
+    id: 12,
+    name: "Besarabsky Market",
+    coordinates: { lat: 50.4421, lng: 30.5204 },
+    intensity: 0.75
+  },
+  {
+    id: 13,
+    name: "Obolon District",
+    coordinates: { lat: 50.5100, lng: 30.4982 },
+    intensity: 0.6
+  },
+  {
+    id: 14,
+    name: "Darnitsa District",
+    coordinates: { lat: 50.4000, lng: 30.6000 },
+    intensity: 0.7
+  },
+  {
+    id: 15,
+    name: "Solomyansky District",
+    coordinates: { lat: 50.4200, lng: 30.4000 },
+    intensity: 0.65
+  },
+  {
+    id: 16,
+    name: "Sviatoshynskyi District",
+    coordinates: { lat: 50.4500, lng: 30.3000 },
+    intensity: 0.6
+  },
+  {
+    id: 17,
+    name: "Desnianskyi District",
+    coordinates: { lat: 50.5000, lng: 30.6000 },
+    intensity: 0.7
+  },
+  {
+    id: 18,
+    name: "Dniprovskyi District",
+    coordinates: { lat: 50.4600, lng: 30.5800 },
+    intensity: 0.75
+  },
+  {
+    id: 19,
+    name: "Holosiivskyi District",
+    coordinates: { lat: 50.3959, lng: 30.4982 },
+    intensity: 0.65
+  },
+  {
+    id: 20,
+    name: "Shevchenkivskyi District",
+    coordinates: { lat: 50.4501, lng: 30.5234 },
+    intensity: 0.8
   }
 ];
 
 /**
- * Sample alert markers with different types and severities
+ * Sample alert markers with different types and severities in Kyiv
  */
 export const sampleAlertMarkers: AlertMarker[] = [
   {
     id: 'alert-001',
     name: 'Critical System Failure',
-    coordinates: { lat: 40.7580, lng: -73.9855 },
+    coordinates: { lat: 50.4501, lng: 30.5234 },
     alertType: 'critical',
     severity: 5,
     status: 'active',
-    description: 'Multiple server failures detected in the Times Square data center. Immediate attention required.',
+    description: 'Multiple server failures detected in the Maidan Nezalezhnosti data center. Immediate attention required.',
     timestamp: new Date('2024-01-15T10:30:00Z'),
     intensity: 1.0
   },
   {
     id: 'alert-002', 
     name: 'High Traffic Warning',
-    coordinates: { lat: 40.7829, lng: -73.9654 },
+    coordinates: { lat: 50.4342, lng: 30.5580 },
     alertType: 'warning',
     severity: 3,
     status: 'acknowledged',
-    description: 'Unusual traffic patterns detected in Central Park area. Monitor for potential congestion.',
+    description: 'Unusual traffic patterns detected in Kyiv Pechersk Lavra area. Monitor for potential congestion.',
     timestamp: new Date('2024-01-15T09:15:00Z'),
     intensity: 0.7
   },
   {
     id: 'alert-003',
     name: 'Security Breach Attempt',
-    coordinates: { lat: 40.7484, lng: -73.9857 },
+    coordinates: { lat: 50.4487, lng: 30.5138 },
     alertType: 'danger',
     severity: 4,
     status: 'active',
-    description: 'Suspicious login attempts detected from Empire State Building location.',
+    description: 'Suspicious login attempts detected from Golden Gate location.',
     timestamp: new Date('2024-01-15T08:45:00Z'),
     intensity: 0.9
   },
   {
     id: 'alert-004',
     name: 'Maintenance Complete',
-    coordinates: { lat: 40.7061, lng: -73.9969 },
+    coordinates: { lat: 50.4525, lng: 30.5155 },
     alertType: 'success',
     severity: 1,
     status: 'resolved',
-    description: 'Scheduled maintenance on Brooklyn Bridge sensors completed successfully.',
+    description: 'Scheduled maintenance on St. Sophia Cathedral sensors completed successfully.',
     timestamp: new Date('2024-01-15T07:00:00Z'),
     intensity: 0.3
   },
   {
     id: 'alert-005',
     name: 'Network Performance Degradation',
-    coordinates: { lat: 40.7480, lng: -74.0048 },
+    coordinates: { lat: 50.4265, lng: 30.5631 },
     alertType: 'warning',
     severity: 2,
     status: 'active',
-    description: 'Slight decrease in network performance observed at High Line monitoring station.',
+    description: 'Slight decrease in network performance observed at Motherland Monument monitoring station.',
     timestamp: new Date('2024-01-15T11:20:00Z'),
     intensity: 0.5
   },
   {
     id: 'alert-006',
     name: 'Information Update',
-    coordinates: { lat: 40.6892, lng: -74.0445 },
+    coordinates: { lat: 50.4474, lng: 30.5254 },
     alertType: 'info',
     severity: 1,
     status: 'active',
-    description: 'Regular status update from Staten Island Ferry monitoring system.',
+    description: 'Regular status update from Khreshchatyk Street monitoring system.',
     timestamp: new Date('2024-01-15T12:00:00Z'),
     intensity: 0.2
   },
   {
     id: 'alert-007',
     name: 'Emergency Response Required',
-    coordinates: { lat: 40.7127, lng: -74.0134 },
+    coordinates: { lat: 50.4440, lng: 30.5459 },
     alertType: 'critical',
     severity: 5,
     status: 'active',
-    description: 'Fire alarm triggered at One World Trade Center. Emergency teams dispatched.',
+    description: 'Fire alarm triggered at Arsenalna Metro Station. Emergency teams dispatched.',
     timestamp: new Date('2024-01-15T13:45:00Z'),
     intensity: 1.0
   },
   {
     id: 'alert-008',
     name: 'Routine Check Complete',
-    coordinates: { lat: 40.8296, lng: -73.9262 },
+    coordinates: { lat: 50.4336, lng: 30.5211 },
     alertType: 'info',
     severity: 1,
     status: 'resolved',
-    description: 'Routine equipment check at Yankee Stadium completed without issues.',
+    description: 'Routine equipment check at Olympiyskiy Stadium completed without issues.',
     timestamp: new Date('2024-01-15T06:30:00Z'),
     intensity: 0.1
   }

@@ -83,7 +83,7 @@ class HeatmapApp {
         <nav class="app-nav">
           <div class="nav-tabs">
             <button class="tab-button active" data-tab="heatmap">Heatmap</button>
-            <button class="tab-button" data-tab="density">Density Grid</button>
+            <button class="tab-button" data-tab="density">Density</button>
             <button class="tab-button" data-tab="markers">Markers</button>
             <button class="tab-button" data-tab="upload">File Upload</button>
           </div>
@@ -155,13 +155,16 @@ class HeatmapApp {
 
           <div id="density-tab" class="tab-content">
             <div class="tab-header">
-              <h2>📊 Density Grid Visualization</h2>
-              <p>Grid-based density analysis with configurable cell size</p>
+              <h2>🏙️ Density Visualization</h2>
+              <p>Density analysis based on administrative districts of Kyiv</p>
               <div class="controls">
                 <label>
-                  Grid Size: 
-                  <input type="range" id="grid-size" min="10" max="50" value="20" />
-                  <span id="grid-size-value">20</span>
+                  Show Labels: 
+                  <input type="checkbox" id="show-district-labels" />
+                </label>
+                <label>
+                  Show Population: 
+                  <input type="checkbox" id="show-population" checked />
                 </label>
                 <label>
                   Filter by Alert Type: 
@@ -373,10 +376,16 @@ class HeatmapApp {
     });
 
     // Density controls
-    const gridSizeSlider = document.getElementById('grid-size') as HTMLInputElement;
-    const gridSizeValue = document.getElementById('grid-size-value');
-    gridSizeSlider?.addEventListener('input', () => {
-      if (gridSizeValue) gridSizeValue.textContent = gridSizeSlider.value;
+    const showDistrictLabels = document.getElementById('show-district-labels') as HTMLInputElement;
+    const showPopulation = document.getElementById('show-population') as HTMLInputElement;
+    
+    showDistrictLabels?.addEventListener('change', () => {
+      if (this.currentVisualizationType === 'density') {
+        this.renderVisualization();
+      }
+    });
+    
+    showPopulation?.addEventListener('change', () => {
       if (this.currentVisualizationType === 'density') {
         this.renderVisualization();
       }
@@ -430,7 +439,7 @@ class HeatmapApp {
     // Initialize unified renderer
     this.renderer = new MapVisualizationRenderer({
       container: 'heatmap-container',
-      center: [40.7128, -74.0060],
+      center: [50.4501, 30.5234], // Kyiv center coordinates
       zoom: 11,
       visualizationType: 'heatmap'
     });
@@ -499,7 +508,7 @@ class HeatmapApp {
       this.renderer.destroy();
       this.renderer = new MapVisualizationRenderer({
         container: containerId,
-        center: [40.7128, -74.0060],
+        center: [50.4501, 30.5234], // Kyiv center coordinates
         zoom: 11,
         visualizationType: visualizationType
       });
@@ -617,7 +626,9 @@ class HeatmapApp {
 
     if (!this.renderer) return;
 
-    const gridSize = parseInt((document.getElementById('grid-size') as HTMLInputElement)?.value || '20');
+    // Get control values
+    const showLabels = (document.getElementById('show-district-labels') as HTMLInputElement)?.checked ?? true;
+    const showPopulation = (document.getElementById('show-population') as HTMLInputElement)?.checked ?? true;
     
     // Get filter values
     const alertTypeFilter = (document.getElementById('density-alert-type-filter') as HTMLSelectElement)?.value || 'all';
@@ -631,9 +642,10 @@ class HeatmapApp {
     
     this.renderer.setVisualizationType('density', {
       density: {
-        gridSize,
+        showLabels,
+        showPopulation,
         colorScale: ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'],
-        showGrid: true,
+        showGrid: false,
         aggregationMethod: 'count'
       }
     });

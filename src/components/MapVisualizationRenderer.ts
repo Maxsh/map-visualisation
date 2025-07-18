@@ -8,8 +8,8 @@ import type {
   PointConfig,
   AlertMarker
 } from '../types';
-import { DensityCalculator } from '../utils/densityCalculator';
 import { AlertIconGenerator } from '../utils/alertIconGenerator';
+import { calculateDistrictDensities } from '../data/kyivDistricts';
 
 // Type for configuration specific to each visualization type
 interface VisualizationTypeConfigs {
@@ -41,6 +41,7 @@ export class MapVisualizationRenderer {
   private densityLayer: L.LayerGroup;
   private markerLayer: L.LayerGroup;
   private pointLayer: L.LayerGroup;
+  private clickedDistrictLabels: Map<string, L.Marker> = new Map();
   
   private currentVisualizationType: VisualizationType = 'heatmap';
   private currentConfig: VisualizationTypeConfigs = {};
@@ -179,72 +180,182 @@ export class MapVisualizationRenderer {
   }
 
   /**
-   * Render density grid visualization
+   * Render density visualization based on Kyiv districts
    */
   private renderDensity(data: Location[]): void {
-    const densityConfig = this.currentConfig.density || {} as DensityConfig;
-    const bounds = this.map.getBounds();
-    const mapBounds = {
-      north: bounds.getNorth(),
-      south: bounds.getSouth(),
-      east: bounds.getEast(),
-      west: bounds.getWest()
-    };
-    const gridCells = DensityCalculator.calculateDensityGrid(data, mapBounds, densityConfig);
-    
     this.densityLayer.clearLayers();
 
-    // Calculate max value for color scaling
-    const maxValue = Math.max(...gridCells.map(cell => cell.value), 1);
-    const colorScale = densityConfig.colorScale || ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'];
+    // Get configuration
+    const densityConfig = this.currentConfig.density || {} as DensityConfig;
+    const showPopulation = densityConfig.showPopulation ?? true;
 
-    gridCells.forEach((cell: any) => {
-      const bounds = L.latLngBounds(
-        [cell.bounds.south, cell.bounds.west],
-        [cell.bounds.north, cell.bounds.east]
+    // Calculate district densities
+    const districtStats = calculateDistrictDensities(data);
+    
+    // Find max density for color scaling
+    const maxDensity = Math.max(...districtStats.map(stat => stat.density), 0.001);
+    
+    // Color scale for districts
+    const colorScale = densityConfig.colorScale || [
+      '#ffffcc', '#ffeda0', '#fed976', '#feb24c', 
+      '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'
+    ];
+
+    districtStats.forEach(stat => {
+      const { district, count, density } = stat;
+      
+      // Validate coordinates before creating polygon
+      if (!district.bounds || !Array.isArray(district.bounds) || district.bounds.length === 0) {
+        console.warn(`Invalid bounds for district ${district.name}:`, district.bounds);
+        return;
+      }
+      
+      // Filter out any invalid coordinates
+      const validCoordinates = district.bounds.filter(coord => 
+        coord && 
+        Array.isArray(coord) && 
+        coord.length === 2 && 
+        typeof coord[0] === 'number' && 
+        typeof coord[1] === 'number' &&
+        !isNaN(coord[0]) && 
+        !isNaN(coord[1])
       );
+      
+      if (validCoordinates.length === 0) {
+        console.warn(`No valid coordinates for district ${district.name}`);
+        return;
+      }
+      
+      try {
+        // Create polygon for district - coordinates are already in [lat, lng] format
+        const polygon = L.polygon(validCoordinates as L.LatLngTuple[], {
+          fillColor: this.getColorForDensity(density, maxDensity, colorScale),
+          fillOpacity: 0.7,
+          color: '#ffffff',
+          weight: 2,
+          opacity: 0.8
+        });
 
-      // Calculate additional properties
-      const cellColor = DensityCalculator.getColorForDensity(cell.value, maxValue, colorScale);
-      const cellArea = this.calculateCellArea(cell.bounds);
-      const density = cellArea > 0 ? cell.value / cellArea : 0;
+        // Add popup with district information
+        const populationInfo = showPopulation && district.population ? 
+          `• Population: <strong>${district.population.toLocaleString()}</strong><br>` : '';
+        
+        const popupContent = `
+          <div style="min-width: 200px;">
+            <strong>${district.nameUa} (${district.name})</strong><br>
+            <div style="margin-top: 8px;">
+              <strong>📊 Statistics:</strong><br>
+              • Points: <strong>${count}</strong><br>
+              • Area: <strong>${district.area.toFixed(1)} km²</strong><br>
+              • Density: <strong>${density.toFixed(2)} points/km²</strong><br>
+              ${populationInfo}
+            </div>
+            <div style="margin-top: 8px; font-size: 0.9em; color: #666;">
+              Click to focus on this district
+            </div>
+          </div>
+        `;
 
-      const rectangle = L.rectangle(bounds, {
-        fillColor: cellColor,
-        fillOpacity: 0.6,
-        color: '#ffffff',
-        weight: 1,
-        opacity: 0.3
-      });
+        polygon.bindPopup(popupContent);
 
-      // Add popup with density information
-      rectangle.bindPopup(`
-        <div>
-          <strong>Density Grid Cell</strong><br>
-          Points: ${cell.count || 0}<br>
-          Value: ${cell.value ? cell.value.toFixed(3) : '0.000'}<br>
-          Density: ${density ? density.toFixed(3) : '0.000'}<br>
-          Area: ${cellArea ? cellArea.toFixed(2) : '0.00'} km²
-        </div>
-      `);
+        // Add click handler to focus on district and toggle label
+        polygon.on('click', () => {
+          const bounds = L.latLngBounds(validCoordinates as L.LatLngTuple[]);
+          this.map.fitBounds(bounds, { padding: [20, 20] });
+          
+          // Toggle district label on click
+          this.toggleDistrictLabel(district, count, density, validCoordinates as L.LatLngTuple[], showPopulation);
+        });
 
-      this.densityLayer.addLayer(rectangle);
+        // Add hover effects
+        polygon.on('mouseover', () => {
+          polygon.setStyle({
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.8
+          });
+        });
+
+        polygon.on('mouseout', () => {
+          polygon.setStyle({
+            weight: 2,
+            opacity: 0.8,
+            fillOpacity: 0.7
+          });
+        });
+
+        this.densityLayer.addLayer(polygon);
+        
+      } catch (error) {
+        console.error(`Error creating polygon for ${district.name}:`, error);
+        return;
+      }
     });
 
     this.densityLayer.addTo(this.map);
+
+    // Add legend
+    this.addDensityLegend(maxDensity, colorScale);
   }
 
   /**
-   * Calculate approximate area of a grid cell in km²
+   * Get color for density value
    */
-  private calculateCellArea(bounds: { north: number; south: number; east: number; west: number }): number {
-    const R = 6371; // Earth's radius in km
-    const latDiff = (bounds.north - bounds.south) * Math.PI / 180;
-    const lngDiff = (bounds.east - bounds.west) * Math.PI / 180;
-    const avgLat = ((bounds.north + bounds.south) / 2) * Math.PI / 180;
+  private getColorForDensity(density: number, maxDensity: number, colorScale: string[]): string {
+    if (density === 0) return colorScale[0];
     
-    const area = R * R * latDiff * lngDiff * Math.cos(avgLat);
-    return Math.abs(area);
+    const normalizedDensity = Math.min(density / maxDensity, 1);
+    const index = Math.floor(normalizedDensity * (colorScale.length - 1));
+    return colorScale[Math.min(index, colorScale.length - 1)];
+  }
+
+  /**
+   * Add density legend to the map
+   */
+  private addDensityLegend(maxDensity: number, colorScale: string[]): void {
+    const legend = new L.Control({ position: 'bottomright' });
+    
+    legend.onAdd = () => {
+      const div = L.DomUtil.create('div', 'density-legend');
+      div.style.cssText = `
+        background: rgba(255, 255, 255, 0.95);
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        font-size: 12px;
+        line-height: 1.4;
+        color: #333;
+        border: 1px solid #ccc;
+      `;
+
+      let legendHtml = '<strong style="color: #333;">Density (points/km²)</strong><br>';
+      
+      // Create legend entries
+      const steps = 5;
+      for (let i = 0; i < steps; i++) {
+        const density = (maxDensity * i / (steps - 1));
+        const color = this.getColorForDensity(density, maxDensity, colorScale);
+        legendHtml += `
+          <div style="margin: 2px 0; color: #333;">
+            <span style="
+              display: inline-block;
+              width: 20px;
+              height: 12px;
+              background: ${color};
+              border: 1px solid #666;
+              margin-right: 5px;
+              vertical-align: middle;
+            "></span>
+            ${density.toFixed(1)}
+          </div>
+        `;
+      }
+
+      div.innerHTML = legendHtml;
+      return div;
+    };
+
+    legend.addTo(this.map);
   }
 
   /**
@@ -417,6 +528,9 @@ export class MapVisualizationRenderer {
     this.densityLayer.clearLayers();
     this.markerLayer.clearLayers();
     this.pointLayer.clearLayers();
+    
+    // Clear clicked district labels
+    this.clickedDistrictLabels.clear();
 
     // Remove layers from map
     this.map.removeLayer(this.densityLayer);
@@ -468,6 +582,65 @@ export class MapVisualizationRenderer {
         points: this.pointLayer.getLayers().length
       }
     };
+  }
+
+  /**
+   * Toggle district label on click
+   */
+  private toggleDistrictLabel(
+    district: { name: string; nameUa: string; population: number; area: number },
+    count: number,
+    density: number,
+    coordinates: L.LatLngTuple[],
+    showPopulation: boolean
+  ): void {
+    const labelKey = district.name;
+    
+    // Check if label already exists
+    if (this.clickedDistrictLabels.has(labelKey)) {
+      // Remove existing label
+      const existingLabel = this.clickedDistrictLabels.get(labelKey);
+      if (existingLabel) {
+        this.densityLayer.removeLayer(existingLabel);
+        this.clickedDistrictLabels.delete(labelKey);
+      }
+    } else {
+      // Create new label
+      const populationLabel = showPopulation && district.population ? 
+        `<br><span style="font-size: 9px; color: #666;">Pop: ${(district.population / 1000).toFixed(0)}k</span>` : '';
+      
+      const labelIcon = L.divIcon({
+        className: 'district-label',
+        html: `<div style="
+          background: rgba(255, 255, 255, 0.95);
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: bold;
+          color: #333;
+          border: 1px solid #ddd;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          white-space: nowrap;
+          text-align: center;
+        ">
+          ${district.nameUa}
+          <br><span style="font-size: 10px; color: #666;">
+            ${count} pts (${density.toFixed(1)}/km²)
+          </span>
+          ${populationLabel}
+        </div>`,
+        iconSize: [120, 50],
+        iconAnchor: [60, 25]
+      });
+
+      // Calculate center from bounds
+      const bounds = L.latLngBounds(coordinates);
+      const center = bounds.getCenter();
+      
+      const label = L.marker(center, { icon: labelIcon });
+      this.densityLayer.addLayer(label);
+      this.clickedDistrictLabels.set(labelKey, label);
+    }
   }
 
   /**
