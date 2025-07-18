@@ -1,4 +1,5 @@
 import L from 'leaflet';
+import 'leaflet.heat';
 import type { 
   Location, 
   VisualizationType, 
@@ -36,7 +37,7 @@ export interface MapVisualizationRendererOptions {
  */
 export class MapVisualizationRenderer {
   private map: L.Map;
-  private heatmapContainer?: HTMLElement;
+  private heatLayer?: L.HeatLayer;
   private densityLayer: L.LayerGroup;
   private markerLayer: L.LayerGroup;
   private pointLayer: L.LayerGroup;
@@ -82,9 +83,8 @@ export class MapVisualizationRenderer {
    */
   private setupMapEventListeners(): void {
     this.map.on('moveend zoomend', () => {
-      if (this.currentVisualizationType === 'heatmap' && this.currentData.length > 0) {
-        this.drawHeatmapCanvas(this.currentData);
-      }
+      // Leaflet.heat handles map updates automatically
+      // No need to manually redraw
     });
   }
 
@@ -139,88 +139,42 @@ export class MapVisualizationRenderer {
   }
 
   /**
-   * Render heatmap visualization using canvas-based approach
+   * Render heatmap visualization using Leaflet.heat for natural organic shapes
    */
   private renderHeatmap(data: Location[]): void {
-    // Create heatmap container if it doesn't exist
-    if (!this.heatmapContainer) {
-      this.heatmapContainer = document.createElement('canvas');
-      this.heatmapContainer.style.position = 'absolute';
-      this.heatmapContainer.style.top = '0';
-      this.heatmapContainer.style.left = '0';
-      this.heatmapContainer.style.pointerEvents = 'none';
-      this.heatmapContainer.style.zIndex = '200';
-      this.map.getContainer().appendChild(this.heatmapContainer);
+    // Remove existing heat layer if it exists
+    if (this.heatLayer) {
+      this.map.removeLayer(this.heatLayer);
     }
 
-    this.drawHeatmapCanvas(data);
-  }
+    // Convert location data to Leaflet.heat format
+    const heatData = data
+      .filter(location => location.coordinates)
+      .map(location => [
+        location.coordinates!.lat,
+        location.coordinates!.lng,
+        location.intensity || 0.6 // Default intensity
+      ] as [number, number, number]);
 
-  /**
-   * Draw heatmap on canvas
-   */
-  private drawHeatmapCanvas(data: Location[]): void {
-    if (!this.heatmapContainer) return;
-
-    const canvas = this.heatmapContainer as HTMLCanvasElement;
-    const container = this.map.getContainer();
-    const size = this.map.getSize();
-
-    canvas.width = size.x;
-    canvas.height = size.y;
-    canvas.style.width = container.style.width;
-    canvas.style.height = container.style.height;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
+    // Create heat layer with standard settings
     const heatmapConfig = this.currentConfig.heatmap || {};
-    const radius = heatmapConfig.radius || 30; // Increased default radius
-    const maxOpacity = heatmapConfig.maxOpacity || 0.9; // Increased default opacity
-    const blur = heatmapConfig.blur || 0.85;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Apply blur effect for smoother heatmap
-    ctx.filter = `blur(${Math.max(blur * 10, 1)}px)`;
-
-    // Draw heat points
-    data.forEach(location => {
-      if (location.coordinates) {
-        const point = this.map.latLngToContainerPoint([
-          location.coordinates.lat,
-          location.coordinates.lng
-        ]);
-
-        // Improved intensity calculation - use full intensity range
-        const intensity = location.intensity || 0.5; // Default to 0.5 if no intensity
-        const alpha = Math.min(intensity * maxOpacity, maxOpacity);
-
-        // Create radial gradient with better color scaling
-        const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius);
-        
-        // Enhanced color gradient for better visibility
-        const baseAlpha = Math.max(alpha, 0.1); // Minimum visibility
-        gradient.addColorStop(0, `rgba(255, 0, 0, ${baseAlpha})`);
-        gradient.addColorStop(0.3, `rgba(255, 100, 0, ${baseAlpha * 0.8})`);
-        gradient.addColorStop(0.6, `rgba(255, 255, 0, ${baseAlpha * 0.6})`);
-        gradient.addColorStop(0.8, `rgba(100, 255, 100, ${baseAlpha * 0.4})`);
-        gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
-
-        ctx.fillStyle = gradient;
-        
-        // Use globalCompositeOperation for better blending
-        ctx.globalCompositeOperation = 'screen';
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalCompositeOperation = 'source-over';
+    this.heatLayer = L.heatLayer(heatData, {
+      radius: heatmapConfig.radius || 25,
+      blur: heatmapConfig.blur || 15,
+      maxZoom: 17,
+      max: 1.0,
+      minOpacity: 0.0,
+      gradient: heatmapConfig.gradient || {
+        0.4: 'blue',
+        0.6: 'cyan',
+        0.7: 'lime',
+        0.8: 'yellow',
+        1.0: 'red'
       }
     });
-    
-    // Reset filter
-    ctx.filter = 'none';
+
+    // Add to map
+    this.heatLayer.addTo(this.map);
   }
 
   /**
@@ -452,13 +406,10 @@ export class MapVisualizationRenderer {
    * Clear all visualization layers
    */
   private clearAllLayers(): void {
-    // Clear heatmap canvas
-    if (this.heatmapContainer) {
-      const canvas = this.heatmapContainer as HTMLCanvasElement;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+    // Clear heat layer
+    if (this.heatLayer) {
+      this.map.removeLayer(this.heatLayer);
+      this.heatLayer = undefined;
     }
 
     // Clear other layers
@@ -523,11 +474,6 @@ export class MapVisualizationRenderer {
    */
   public destroy(): void {
     this.clearAllLayers();
-    
-    // Remove heatmap canvas
-    if (this.heatmapContainer && this.heatmapContainer.parentNode) {
-      this.heatmapContainer.parentNode.removeChild(this.heatmapContainer);
-    }
     
     this.map.remove();
     AlertIconGenerator.clearCache();

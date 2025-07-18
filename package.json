@@ -11,12 +11,13 @@
     "serve": "vite preview --port 3000"
   },
   "devDependencies": {
+    "@types/leaflet.heat": "^0.2.4",
     "typescript": "~5.8.3",
     "vite": "^7.0.4"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.20",
-    "heatmap.js": "^2.0.5",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "leaflet.heat": "^0.2.0"
   }
 }

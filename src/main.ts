@@ -1,15 +1,12 @@
 import './style.css';
 import 'leaflet/dist/leaflet.css';
-import { HeatmapRenderer } from './components/HeatmapRenderer';
 import { MapVisualizationRenderer } from './components/MapVisualizationRenderer';
 import { FileUploadComponent } from './components/FileUploadComponent';
 import { getSampleDataByType } from './data/sampleAlertData';
 import type { Location, VisualizationType } from './types';
 
 class HeatmapApp {
-  private heatmapRenderer?: HeatmapRenderer;
-  private densityRenderer?: MapVisualizationRenderer;
-  private markersRenderer?: MapVisualizationRenderer;
+  private renderer?: MapVisualizationRenderer;
   private currentData: Location[] = [];
   private currentVisualizationType: VisualizationType = 'heatmap';
   private readonly DATA_STORAGE_KEY = 'heatmap_app_data';
@@ -109,13 +106,18 @@ class HeatmapApp {
               <div class="controls">
                 <label>
                   Radius: 
-                  <input type="range" id="heatmap-radius" min="10" max="60" value="35" />
-                  <span id="heatmap-radius-value">35</span>px
+                  <input type="range" id="heatmap-radius" min="20" max="80" value="50" />
+                  <span id="heatmap-radius-value">50</span>px
                 </label>
                 <label>
                   Opacity: 
-                  <input type="range" id="heatmap-opacity" min="0.1" max="1" step="0.1" value="0.9" />
-                  <span id="heatmap-opacity-value">0.9</span>
+                  <input type="range" id="heatmap-opacity" min="0.3" max="1" step="0.1" value="0.8" />
+                  <span id="heatmap-opacity-value">0.8</span>
+                </label>
+                <label>
+                  Intensity: 
+                  <input type="range" id="heatmap-intensity" min="0.5" max="2" step="0.1" value="1.2" />
+                  <span id="heatmap-intensity-value">1.2</span>x
                 </label>
                 <label>
                   Filter by Alert Type: 
@@ -345,6 +347,15 @@ class HeatmapApp {
       }
     });
 
+    const heatmapIntensitySlider = document.getElementById('heatmap-intensity') as HTMLInputElement;
+    const heatmapIntensityValue = document.getElementById('heatmap-intensity-value');
+    heatmapIntensitySlider?.addEventListener('input', () => {
+      if (heatmapIntensityValue) heatmapIntensityValue.textContent = heatmapIntensitySlider.value;
+      if (this.currentVisualizationType === 'heatmap') {
+        this.renderVisualization();
+      }
+    });
+
     // Heatmap filter controls
     const heatmapAlertTypeFilter = document.getElementById('heatmap-alert-type-filter') as HTMLSelectElement;
     const heatmapTimeFilter = document.getElementById('heatmap-time-filter') as HTMLSelectElement;
@@ -416,8 +427,13 @@ class HeatmapApp {
   }
 
   private initializeRenderers(): void {
-    // Initialize legacy heatmap renderer
-    this.heatmapRenderer = new HeatmapRenderer('heatmap-container');
+    // Initialize unified renderer
+    this.renderer = new MapVisualizationRenderer({
+      container: 'heatmap-container',
+      center: [40.7128, -74.0060],
+      zoom: 11,
+      visualizationType: 'heatmap'
+    });
 
     // Initialize file upload component with CSS injection
     const style = document.createElement('style');
@@ -453,6 +469,9 @@ class HeatmapApp {
     if (tabName !== 'upload') {
       this.currentVisualizationType = tabName as VisualizationType;
       
+      // Update container for the new visualization type
+      this.updateRendererContainer(tabName as VisualizationType);
+      
       // Use setTimeout to ensure the container is visible before rendering
       setTimeout(() => {
         this.renderVisualization();
@@ -462,20 +481,39 @@ class HeatmapApp {
   }
 
   /**
+   * Update renderer container for different visualization types
+   */
+  private updateRendererContainer(visualizationType: VisualizationType): void {
+    if (!this.renderer) return;
+
+    const containerMap: Record<VisualizationType, string> = {
+      'heatmap': 'heatmap-container',
+      'density': 'density-container',
+      'markers': 'markers-container',
+      'points': 'markers-container' // Use markers container for points
+    };
+
+    const containerId = containerMap[visualizationType];
+    if (containerId) {
+      // Create new renderer for the specific container
+      this.renderer.destroy();
+      this.renderer = new MapVisualizationRenderer({
+        container: containerId,
+        center: [40.7128, -74.0060],
+        zoom: 11,
+        visualizationType: visualizationType
+      });
+    }
+  }
+
+  /**
    * Invalidate map sizes after tab switch to ensure proper rendering
    */
   private invalidateMaps(): void {
     // Small delay to ensure DOM has updated
     setTimeout(() => {
-      if (this.currentVisualizationType === 'density' && this.densityRenderer) {
-        this.densityRenderer.getMap()?.invalidateSize();
-      } else if (this.currentVisualizationType === 'markers' && this.markersRenderer) {
-        this.markersRenderer.getMap()?.invalidateSize();
-      } else if (this.currentVisualizationType === 'heatmap' && this.heatmapRenderer) {
-        const map = this.heatmapRenderer.getMap();
-        if (map) {
-          map.invalidateSize();
-        }
+      if (this.renderer) {
+        this.renderer.getMap()?.invalidateSize();
       }
     }, 100);
   }
@@ -508,6 +546,9 @@ class HeatmapApp {
         case 'markers':
           this.renderMarkers();
           break;
+        case 'points':
+          this.renderPoints();
+          break;
       }
     } catch (error) {
       console.error(`Error rendering ${this.currentVisualizationType} visualization:`, error);
@@ -522,63 +563,47 @@ class HeatmapApp {
       return;
     }
 
-    if (this.heatmapRenderer) {
-      // Get dynamic values from controls
-      const radius = parseInt((document.getElementById('heatmap-radius') as HTMLInputElement)?.value || '35');
-      const maxOpacity = parseFloat((document.getElementById('heatmap-opacity') as HTMLInputElement)?.value || '0.9');
-      
-      // Get filter values
-      const alertTypeFilter = (document.getElementById('heatmap-alert-type-filter') as HTMLSelectElement)?.value || 'all';
-      const timeFilterHours = parseInt((document.getElementById('heatmap-time-filter') as HTMLSelectElement)?.value || '0');
+    if (!this.renderer) return;
 
-      // Filter data by alert type and time
-      const filteredData = this.filterDataByAlertTypeAndTime(this.currentData, alertTypeFilter, timeFilterHours);
-
-      // Update filter status for heatmap
-      this.updateHeatmapFilterStatus(filteredData.length, alertTypeFilter, timeFilterHours);
-
-      // Use the existing HeatmapRenderer API
-      const visualization = {
-        locations: filteredData,
-        mapConfig: {
-          center: { lat: 40.7128, lng: -74.0060 },
-          zoom: 11,
-          maxZoom: 18,
-          minZoom: 2
-        },
-        heatmapConfig: {
-          radius: radius,
-          maxOpacity: maxOpacity,
-          minOpacity: 0.1,
-          blur: 0.85,
-          gradient: {
-            0.0: '#0080ff',
-            0.2: '#00ff80', 
-            0.4: '#80ff00',
-            0.6: '#ffff00',
-            0.8: '#ff8000',
-            1.0: '#ff0000'
-          }
-        }
-      };
-      
-      if (filteredData.length === 0) {
-        this.heatmapRenderer.updateData([], visualization.heatmapConfig);
-      } else {
-        this.heatmapRenderer.initialize(visualization).catch(console.error);
-      }
-    }
-  }
-
-  /**
-   * Check if a container element is visible and has dimensions
-   */
-  private isContainerReady(containerId: string): boolean {
-    const container = document.getElementById(containerId);
-    if (!container) return false;
+    // Get dynamic values from controls
+    const radius = parseInt((document.getElementById('heatmap-radius') as HTMLInputElement)?.value || '25');
+    const maxOpacity = parseFloat((document.getElementById('heatmap-opacity') as HTMLInputElement)?.value || '0.8');
+    const intensityMultiplier = parseFloat((document.getElementById('heatmap-intensity') as HTMLInputElement)?.value || '1.2');
     
-    const rect = container.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
+    // Get filter values
+    const alertTypeFilter = (document.getElementById('heatmap-alert-type-filter') as HTMLSelectElement)?.value || 'all';
+    const timeFilterHours = parseInt((document.getElementById('heatmap-time-filter') as HTMLSelectElement)?.value || '0');
+
+    // Filter data by alert type and time
+    const filteredData = this.filterDataByAlertTypeAndTime(this.currentData, alertTypeFilter, timeFilterHours);
+
+    // Apply intensity multiplier to the data
+    const intensifiedData = filteredData.map(location => ({
+      ...location,
+      intensity: (location.intensity || 0.5) * intensityMultiplier
+    }));
+
+    // Update filter status for heatmap
+    this.updateHeatmapFilterStatus(filteredData.length, alertTypeFilter, timeFilterHours);
+
+    // Configure and render heatmap
+    this.renderer.updateConfig({
+      heatmap: {
+        radius: radius,
+        maxOpacity: maxOpacity,
+        blur: 15,
+        gradient: {
+          0.4: 'blue',
+          0.6: 'cyan',
+          0.7: 'lime',
+          0.8: 'yellow',
+          1.0: 'red'
+        }
+      }
+    });
+
+    this.renderer.setVisualizationType('heatmap');
+    this.renderer.render(intensifiedData);
   }
 
   private renderDensity(): void {
@@ -589,14 +614,7 @@ class HeatmapApp {
       return;
     }
 
-    if (!this.densityRenderer) {
-      this.densityRenderer = new MapVisualizationRenderer({
-        container: 'density-container',
-        center: [40.7128, -74.0060],
-        zoom: 11,
-        visualizationType: 'density'
-      });
-    }
+    if (!this.renderer) return;
 
     const gridSize = parseInt((document.getElementById('grid-size') as HTMLInputElement)?.value || '20');
     
@@ -610,7 +628,7 @@ class HeatmapApp {
     // Update filter status for density
     this.updateDensityFilterStatus(filteredData.length, alertTypeFilter, timeFilterHours);
     
-    this.densityRenderer.setVisualizationType('density', {
+    this.renderer.setVisualizationType('density', {
       density: {
         gridSize,
         colorScale: ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'],
@@ -619,7 +637,7 @@ class HeatmapApp {
       }
     });
     
-    this.densityRenderer.render(filteredData);
+    this.renderer.render(filteredData);
   }
 
   private renderMarkers(): void {
@@ -630,14 +648,7 @@ class HeatmapApp {
       return;
     }
 
-    if (!this.markersRenderer) {
-      this.markersRenderer = new MapVisualizationRenderer({
-        container: 'markers-container',
-        center: [40.7128, -74.0060],
-        zoom: 11,
-        visualizationType: 'markers'
-      });
-    }
+    if (!this.renderer) return;
 
     const pulseAnimation = (document.getElementById('pulse-animation') as HTMLInputElement)?.checked || false;
     const iconSize = parseInt((document.getElementById('icon-size') as HTMLSelectElement)?.value || '32');
@@ -650,7 +661,7 @@ class HeatmapApp {
     // Update filter status
     this.updateFilterStatus(filteredData.length, alertTypeFilter, timeFilterHours);
 
-    this.markersRenderer.setVisualizationType('markers', {
+    this.renderer.setVisualizationType('markers', {
       markers: {
         iconSize: [iconSize, iconSize],
         pulseAnimation,
@@ -659,7 +670,26 @@ class HeatmapApp {
       }
     });
 
-    this.markersRenderer.render(filteredData);
+    this.renderer.render(filteredData);
+  }
+
+  private renderPoints(): void {
+    if (!this.renderer) return;
+
+    // Use markers renderer for points
+    this.renderer.setVisualizationType('points');
+    this.renderer.render(this.currentData);
+  }
+
+  /**
+   * Check if a container element is visible and has dimensions
+   */
+  private isContainerReady(containerId: string): boolean {
+    const container = document.getElementById(containerId);
+    if (!container) return false;
+    
+    const rect = container.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   }
 
   /**
