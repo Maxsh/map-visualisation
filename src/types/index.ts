@@ -112,6 +112,14 @@ export interface MarkerConfig {
 }
 
 /**
+ * Time filtering options for alert markers
+ */
+export interface TimeFilterConfig {
+  enabled: boolean;
+  hours: number; // Number of hours to look back from current time
+}
+
+/**
  * Point visualization configuration
  */
 export interface PointConfig {

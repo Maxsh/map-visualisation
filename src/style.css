@@ -168,10 +168,63 @@ h1 {
   color: rgba(255, 255, 255, 0.87);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 4px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.controls select option {
+  background: #1a1a1a;
+  color: #ffffff;
+  padding: 8px;
+  border: none;
+}
+
+/* Ensure dropdown works in WebKit browsers */
+.controls select::-webkit-scrollbar {
+  width: 8px;
+}
+
+.controls select::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+.controls select::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.controls select::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+.controls select:focus {
+  outline: none;
+  border-color: #646cff;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.2);
+}
+
+.controls select:focus option {
+  background: #1a1a1a;
+  color: #ffffff;
 }
 
 .controls input[type="checkbox"] {
   transform: scale(1.2);
+}
+
+.filter-status {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(100, 108, 255, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(100, 108, 255, 0.2);
+}
+
+.filter-status span {
+  color: #646cff;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .app-footer {
@@ -353,6 +406,11 @@ button:focus-visible {
     border-color: #ced4da;
   }
   
+  .controls select option {
+    background: #ffffff;
+    color: #333333;
+  }
+  
   .data-stats {
     background: rgba(0, 0, 0, 0.1);
     color: #495057;
@@ -389,11 +447,18 @@ button:focus-visible {
     border-color: #747bff;
   }
   
-  #info {
-    background-color: rgba(0, 0, 0, 0.05);
+  .filter-status {
+    background: rgba(116, 123, 255, 0.1);
+    border-color: rgba(116, 123, 255, 0.2);
   }
   
-  #info h3 {
+  .filter-status span {
+    color: #747bff;
+  }
+
+  #info {
+    background-color: rgba(0, 0, 0, 0.05);
+  }  #info h3 {
     color: #747bff;
   }
   
@@ -428,5 +493,30 @@ button:focus-visible {
   
   .tabs {
     border-bottom-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Responsive map height adjustments */
+@media (max-height: 768px) {
+  #heatmap-container,
+  #density-container,
+  #markers-container {
+    height: 600px !important;
+  }
+}
+
+@media (max-height: 650px) {
+  #heatmap-container,
+  #density-container,
+  #markers-container {
+    height: 500px !important;
+  }
+}
+
+@media (max-height: 500px) {
+  #heatmap-container,
+  #density-container,
+  #markers-container {
+    height: 400px !important;
   }
 }

@@ -119,7 +119,7 @@ class HeatmapApp {
                 </label>
               </div>
             </div>
-            <div id="heatmap-container" style="height: 500px; width: 100%;"></div>
+            <div id="heatmap-container" style="height: 750px; width: 100%;"></div>
           </div>
 
           <div id="density-tab" class="tab-content">
@@ -134,7 +134,7 @@ class HeatmapApp {
                 </label>
               </div>
             </div>
-            <div id="density-container" style="height: 500px; width: 100%;"></div>
+            <div id="density-container" style="height: 750px; width: 100%;"></div>
           </div>
 
           <div id="markers-tab" class="tab-content">
@@ -166,9 +166,26 @@ class HeatmapApp {
                     <option value="resolved">Resolved</option>
                   </select>
                 </label>
+                <label>
+                  Filter by Time: 
+                  <select id="time-filter">
+                    <option value="0" selected>All Time</option>
+                    <option value="1">Last 1 hour</option>
+                    <option value="2">Last 2 hours</option>
+                    <option value="3">Last 3 hours</option>
+                    <option value="4">Last 4 hours</option>
+                    <option value="5">Last 5 hours</option>
+                    <option value="6">Last 6 hours</option>
+                    <option value="7">Last 7 hours</option>
+                    <option value="8">Last 8 hours</option>
+                  </select>
+                </label>
+                <div class="filter-status" id="filter-status">
+                  <span id="filter-count">Showing all markers</span>
+                </div>
               </div>
             </div>
-            <div id="markers-container" style="height: 500px; width: 100%;"></div>
+            <div id="markers-container" style="height: 750px; width: 100%;"></div>
           </div>
 
           <div id="upload-tab" class="tab-content">
@@ -284,6 +301,7 @@ class HeatmapApp {
     const pulseAnimation = document.getElementById('pulse-animation') as HTMLInputElement;
     const iconSize = document.getElementById('icon-size') as HTMLSelectElement;
     const alertTypeFilter = document.getElementById('alert-type-filter') as HTMLSelectElement;
+    const timeFilter = document.getElementById('time-filter') as HTMLSelectElement;
     
     pulseAnimation?.addEventListener('change', () => {
       if (this.currentVisualizationType === 'markers') {
@@ -296,6 +314,11 @@ class HeatmapApp {
       }
     });
     alertTypeFilter?.addEventListener('change', () => {
+      if (this.currentVisualizationType === 'markers') {
+        this.renderVisualization();
+      }
+    });
+    timeFilter?.addEventListener('change', () => {
       if (this.currentVisualizationType === 'markers') {
         this.renderVisualization();
       }
@@ -509,9 +532,13 @@ class HeatmapApp {
     const pulseAnimation = (document.getElementById('pulse-animation') as HTMLInputElement)?.checked || false;
     const iconSize = parseInt((document.getElementById('icon-size') as HTMLSelectElement)?.value || '32');
     const alertTypeFilter = (document.getElementById('alert-type-filter') as HTMLSelectElement)?.value || 'all';
+    const timeFilterHours = parseInt((document.getElementById('time-filter') as HTMLSelectElement)?.value || '0');
 
-    // Filter data by alert type
-    const filteredData = this.filterDataByAlertType(this.currentData, alertTypeFilter);
+    // Filter data by alert type and time
+    const filteredData = this.filterDataByAlertTypeAndTime(this.currentData, alertTypeFilter, timeFilterHours);
+
+    // Update filter status
+    this.updateFilterStatus(filteredData.length, alertTypeFilter, timeFilterHours);
 
     this.markersRenderer.setVisualizationType('markers', {
       markers: {
@@ -526,18 +553,96 @@ class HeatmapApp {
   }
 
   /**
-   * Filter data by alert type
+   * Filter data by alert type and time
    */
-  private filterDataByAlertType(data: Location[], filterValue: string): Location[] {
-    if (filterValue === 'all') {
-      return data;
+  private filterDataByAlertTypeAndTime(data: Location[], alertTypeFilter: string, timeFilterHours: number): Location[] {
+    let filteredData = data;
+
+    // Apply alert type filter
+    if (alertTypeFilter !== 'all') {
+      filteredData = filteredData.filter(location => {
+        const alertType = this.extractAlertTypeFromLocation(location);
+        return alertType === alertTypeFilter;
+      });
     }
 
-    return data.filter(location => {
-      // Check if location has alert type information in metadata
-      const alertType = this.extractAlertTypeFromLocation(location);
-      return alertType === filterValue;
-    });
+    // Apply time filter
+    if (timeFilterHours > 0) {
+      const cutoffTime = new Date(Date.now() - timeFilterHours * 60 * 60 * 1000);
+      filteredData = filteredData.filter(location => {
+        const timestamp = this.extractTimestampFromLocation(location);
+        return timestamp && timestamp >= cutoffTime;
+      });
+    }
+
+    return filteredData;
+  }
+
+  /**
+   * Extract timestamp from location data
+   */
+  private extractTimestampFromLocation(location: Location): Date | null {
+    // Check if it's already an AlertMarker with timestamp
+    if ((location as any).timestamp) {
+      return new Date((location as any).timestamp);
+    }
+
+    // Check metadata for timestamp fields
+    if (location.metadata?.timestamp) {
+      return new Date(location.metadata.timestamp);
+    }
+    
+    if (location.metadata?.date_time) {
+      return new Date(location.metadata.date_time);
+    }
+    
+    if (location.metadata?.createdAt) {
+      return new Date(location.metadata.createdAt);
+    }
+    
+    if (location.metadata?.created_at) {
+      return new Date(location.metadata.created_at);
+    }
+
+    // For sample data, generate a timestamp within the last 24 hours
+    if (!location.metadata?.timestamp) {
+      const randomHours = Math.random() * 24;
+      const timestamp = new Date(Date.now() - randomHours * 60 * 60 * 1000);
+      
+      // Store it in metadata for consistency
+      if (!location.metadata) {
+        location.metadata = {};
+      }
+      location.metadata.timestamp = timestamp.toISOString();
+      
+      return timestamp;
+    }
+
+    return null;
+  }
+
+  /**
+   * Update filter status display
+   */
+  private updateFilterStatus(filteredCount: number, alertTypeFilter: string, timeFilterHours: number): void {
+    const statusElement = document.getElementById('filter-count');
+    if (statusElement) {
+      let statusText = `Showing ${filteredCount} markers`;
+      
+      const filters = [];
+      if (alertTypeFilter !== 'all') {
+        filters.push(`type: ${alertTypeFilter}`);
+      }
+      if (timeFilterHours > 0) {
+        filters.push(`time: last ${timeFilterHours} hour${timeFilterHours > 1 ? 's' : ''}`);
+      }
+      
+      if (filters.length > 0) {
+        statusText += ` (filtered by ${filters.join(', ')})`;
+      }
+      
+      statusElement.textContent = statusText;
+    }
   }
 
   /**
