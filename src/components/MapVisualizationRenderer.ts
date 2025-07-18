@@ -153,22 +153,23 @@ export class MapVisualizationRenderer {
       .map(location => [
         location.coordinates!.lat,
         location.coordinates!.lng,
-        location.intensity || 0.6 // Default intensity
+        (location.intensity || 0.8) * 1.5 // Increased default intensity and multiplier
       ] as [number, number, number]);
 
-    // Create heat layer with standard settings
+    // Create heat layer with enhanced sensitivity settings
     const heatmapConfig = this.currentConfig.heatmap || {};
     this.heatLayer = L.heatLayer(heatData, {
       radius: heatmapConfig.radius || 25,
       blur: heatmapConfig.blur || 15,
       maxZoom: 17,
-      max: 1.0,
+      max: 0.5, // Reduced max value for higher sensitivity
       minOpacity: 0.0,
       gradient: heatmapConfig.gradient || {
-        0.4: 'blue',
-        0.6: 'cyan',
-        0.7: 'lime',
-        0.8: 'yellow',
+        0.2: 'blue',
+        0.4: 'cyan',
+        0.5: 'lime',
+        0.6: 'yellow',
+        0.7: 'orange',
         1.0: 'red'
       }
     });

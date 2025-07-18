@@ -116,8 +116,8 @@ class HeatmapApp {
                 </label>
                 <label>
                   Intensity: 
-                  <input type="range" id="heatmap-intensity" min="0.5" max="2" step="0.1" value="1.2" />
-                  <span id="heatmap-intensity-value">1.2</span>x
+                  <input type="range" id="heatmap-intensity" min="0.5" max="3" step="0.1" value="2.0" />
+                  <span id="heatmap-intensity-value">2.0</span>x
                 </label>
                 <label>
                   Filter by Alert Type: 
@@ -568,7 +568,7 @@ class HeatmapApp {
     // Get dynamic values from controls
     const radius = parseInt((document.getElementById('heatmap-radius') as HTMLInputElement)?.value || '25');
     const maxOpacity = parseFloat((document.getElementById('heatmap-opacity') as HTMLInputElement)?.value || '0.8');
-    const intensityMultiplier = parseFloat((document.getElementById('heatmap-intensity') as HTMLInputElement)?.value || '1.2');
+    const intensityMultiplier = parseFloat((document.getElementById('heatmap-intensity') as HTMLInputElement)?.value || '2.0');
     
     // Get filter values
     const alertTypeFilter = (document.getElementById('heatmap-alert-type-filter') as HTMLSelectElement)?.value || 'all';
@@ -580,7 +580,7 @@ class HeatmapApp {
     // Apply intensity multiplier to the data
     const intensifiedData = filteredData.map(location => ({
       ...location,
-      intensity: (location.intensity || 0.5) * intensityMultiplier
+      intensity: (location.intensity || 0.8) * intensityMultiplier // Increased default intensity
     }));
 
     // Update filter status for heatmap
@@ -593,10 +593,11 @@ class HeatmapApp {
         maxOpacity: maxOpacity,
         blur: 15,
         gradient: {
-          0.4: 'blue',
-          0.6: 'cyan',
-          0.7: 'lime',
-          0.8: 'yellow',
+          0.2: 'blue',
+          0.4: 'cyan',
+          0.5: 'lime',
+          0.6: 'yellow',
+          0.7: 'orange',
           1.0: 'red'
         }
       }
